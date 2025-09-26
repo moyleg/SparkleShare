@@ -250,9 +250,9 @@ namespace SparkleShare {
         }
 
 
-        public override void Quit ()
+        public override void PlatformQuit ()
         {
-            base.Quit ();
+            // Windows-specific cleanup if needed
         }
     }
 }
