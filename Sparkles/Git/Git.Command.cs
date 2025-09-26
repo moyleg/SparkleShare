@@ -96,8 +96,12 @@ namespace Sparkles.Git {
 
             // Don't let Git try to read the config options in PREFIX/etc or ~
             SetEnvironmentVariable ("GIT_CONFIG_NOSYSTEM", "1");
-            SetEnvironmentVariable ("PREFIX", "");
-            SetEnvironmentVariable ("HOME", "");
+            
+            // On Windows, don't override HOME as it can cause command execution issues
+            if (Environment.OSVersion.Platform != PlatformID.Win32NT) {
+                SetEnvironmentVariable ("PREFIX", "");
+                SetEnvironmentVariable ("HOME", "");
+            }
 
             SetEnvironmentVariable ("LANG", "en_US.UTF8");
             SetEnvironmentVariable ("LC_ALL", "en_US.UTF8");

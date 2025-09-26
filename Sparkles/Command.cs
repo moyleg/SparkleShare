@@ -116,19 +116,35 @@ namespace Sparkles {
 
         protected static string LocateCommand (string name)
         {
-            string [] possible_command_paths = {
-                Environment.GetFolderPath (Environment.SpecialFolder.Personal) + "/bin/" + name,
-                InstallationInfo.Directory + "/bin/" + name,
-                "/usr/local/bin/" + name,
-                "/usr/bin/" + name,
-                "/opt/local/bin/" + name
-            };
+            // On Windows, try common Windows paths first
+            if (Environment.OSVersion.Platform == PlatformID.Win32NT) {
+                string[] windows_command_paths = {
+                    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "Git", "cmd", name + ".exe"),
+                    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "Git", "cmd", name + ".exe"),
+                    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", "Git", "cmd", name + ".exe")
+                };
 
-            foreach (string path in possible_command_paths) {
-                if (File.Exists (path))
-                    return path;
+                foreach (string path in windows_command_paths) {
+                    if (File.Exists(path))
+                        return path;
+                }
+            } else {
+                // Unix/Linux paths
+                string [] possible_command_paths = {
+                    Environment.GetFolderPath (Environment.SpecialFolder.Personal) + "/bin/" + name,
+                    InstallationInfo.Directory + "/bin/" + name,
+                    "/usr/local/bin/" + name,
+                    "/usr/bin/" + name,
+                    "/opt/local/bin/" + name
+                };
+
+                foreach (string path in possible_command_paths) {
+                    if (File.Exists (path))
+                        return path;
+                }
             }
 
+            // Final fallback - return just the command name and hope it's in PATH
             return name;
         }
     }

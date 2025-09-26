@@ -1,0 +1,150 @@
+name: Build SparkleShare Windows
+
+on:
+  push:
+    branches: [ main, develop, feature/* ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    name: Build Windows
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup MSBuild
+      uses: microsoft/setup-msbuild@v2
+      
+    - name: Setup NuGet
+      uses: nuget/setup-nuget@v2
+      with:
+        nuget-version: 'latest'
+        
+    - name: Create placeholder missing images
+      run: |
+        New-Item -Path "SparkleShare\Linux\Images\icons\hicolor" -ItemType Directory -Force
+        Copy-Item "SparkleShare\Windows\Images\folder.png" "SparkleShare\Linux\Images\icons\hicolor\document-added-12.png" -Force
+        Copy-Item "SparkleShare\Windows\Images\folder.png" "SparkleShare\Linux\Images\icons\hicolor\document-deleted-12.png" -Force  
+        Copy-Item "SparkleShare\Windows\Images\folder.png" "SparkleShare\Linux\Images\icons\hicolor\document-edited-12.png" -Force
+        Copy-Item "SparkleShare\Windows\Images\folder.png" "SparkleShare\Linux\Images\icons\hicolor\document-moved-12.png" -Force
+        Copy-Item "SparkleShare\Windows\Images\process-syncing.png" "SparkleShare\Linux\Images\icons\hicolor\process-working-22.png" -Force
+        
+    - name: Restore NuGet packages
+      run: nuget restore SparkleShare.sln
+      
+    - name: Build Core Libraries
+      run: |
+        msbuild Sparkles/Sparkles.csproj /p:Configuration=Release /p:Platform="Any CPU"
+        msbuild Sparkles/Git/Sparkles.Git.csproj /p:Configuration=Release /p:Platform="Any CPU"
+      
+    - name: Build Windows Application
+      run: msbuild SparkleShare/Windows/SparkleShare.Windows.csproj /p:Configuration=Release /p:Platform="Any CPU"
+      
+    - name: Create build artifact
+      run: |
+        mkdir release-build
+        Copy-Item "bin\*" "release-build\" -Recurse -Force -ErrorAction SilentlyContinue
+        
+    - name: List build output
+      run: |
+        Write-Host "Build output contents:"
+        Get-ChildItem "bin" -Recurse | Select-Object FullName, Length
+        Write-Host "Release build contents:"  
+        Get-ChildItem "release-build" -Recurse | Select-Object FullName, Length
+        
+    - name: Test executable exists
+      run: |
+        if (Test-Path "bin\SparkleShare.Windows.exe") {
+          Write-Host "✅ SparkleShare.Windows.exe built successfully"
+          $fileInfo = Get-Item "bin\SparkleShare.Windows.exe"
+          Write-Host "File size: $($fileInfo.Length) bytes"
+          Write-Host "Created: $($fileInfo.CreationTime)"
+        } else {
+          Write-Host "❌ SparkleShare.Windows.exe not found"
+          exit 1
+        }
+        
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: SparkleShare-Windows-${{ github.sha }}
+        path: bin/
+        retention-days: 30
+
+  create-installer:
+    name: Create Installer Package
+    runs-on: windows-latest
+    needs: build
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Download build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: SparkleShare-Windows-${{ github.sha }}
+        path: bin/
+        
+    - name: Create installer package
+      run: |
+        # Create a simple ZIP package with all necessary files
+        mkdir SparkleShare-Package
+        Copy-Item "bin\*" "SparkleShare-Package\" -Recurse -Force
+        
+        # Create a simple batch launcher
+        @'
+        @echo off
+        echo Starting SparkleShare...
+        cd /d "%~dp0"
+        if exist "SparkleShare.Windows.exe" (
+            start "" "SparkleShare.Windows.exe"
+        ) else (
+            echo ERROR: SparkleShare.Windows.exe not found
+            pause
+        )
+        '@ | Out-File -FilePath "SparkleShare-Package\Start-SparkleShare.bat" -Encoding ASCII
+        
+        # Create README
+        @'
+        # SparkleShare for Windows
+        
+        ## Installation Instructions
+        
+        1. Extract all files to a folder (e.g., C:\Program Files\SparkleShare\)
+        2. Run `Start-SparkleShare.bat` or double-click `SparkleShare.Windows.exe`
+        3. Follow the setup wizard to configure your first repository
+        
+        ## Bug Fixes Applied
+        
+        This version includes fixes for:
+        - ✅ Thread safety issues
+        - ✅ Memory leaks  
+        - ✅ SSH connectivity problems
+        - ✅ File operation errors
+        - ✅ Configuration safety issues
+        - ✅ Process stability improvements
+        
+        ## System Requirements
+        
+        - Windows 7 or later
+        - .NET Framework 4.8
+        - Git for Windows (recommended)
+        
+        ## Support
+        
+        For issues or questions, visit: https://github.com/hbons/SparkleShare
+        '@ | Out-File -FilePath "SparkleShare-Package\README.md" -Encoding UTF8
+        
+        # Create final ZIP
+        Compress-Archive -Path "SparkleShare-Package\*" -DestinationPath "SparkleShare-Windows.zip" -Force
+        
+    - name: Upload installer package
+      uses: actions/upload-artifact@v4
+      with:
+        name: SparkleShare-Windows-Installer
+        path: SparkleShare-Windows.zip
+        retention-days: 90

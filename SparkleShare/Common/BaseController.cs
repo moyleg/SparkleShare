@@ -222,7 +222,8 @@ namespace SparkleShare {
                 version += " (Flatpak)";
 
             Logger.LogInfo ("Environment", "SparkleShare " + version);
-            Logger.LogInfo ("Environment", "Git LFS " + Sparkles.Git.GitCommand.GitLFSVersion);
+            // Temporarily disabled to test GUI initialization
+            // Logger.LogInfo ("Environment", "Git LFS " + Sparkles.Git.GitCommand.GitLFSVersion);
             Logger.LogInfo ("Environment", "Git " + Sparkles.Git.GitCommand.GitVersion);
             Logger.LogInfo ("Environment", InstallationInfo.OperatingSystem + " " + InstallationInfo.OperatingSystemVersion);
 
