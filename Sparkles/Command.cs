@@ -64,7 +64,7 @@ namespace Sparkles {
 
             } catch (Exception e) {
                 Logger.LogInfo ("Cmd", "Couldn't execute command: " + e.Message);
-                Environment.Exit (-1);
+                throw new InvalidOperationException ("Failed to execute command: " + Path.GetFileName (StartInfo.FileName) + " " + StartInfo.Arguments, e);
             }
         }
 
