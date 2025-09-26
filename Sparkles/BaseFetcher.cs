@@ -117,6 +117,7 @@ namespace Sparkles {
 
 
         Thread thread;
+        CancellationTokenSource cancellationTokenSource;
 
         public void Start ()
         {
@@ -136,25 +137,38 @@ namespace Sparkles {
                 return;
             }
 
+            cancellationTokenSource = new CancellationTokenSource();
+            var cancellationToken = cancellationTokenSource.Token;
+
             thread = new Thread (() => {
-                if (Fetch ()) {
-                    Thread.Sleep (500);
-                    Logger.LogInfo ("Fetcher", "Finished");
-
-                    IsActive = false;
-                    Finished (FetchedRepoStorageType, Warnings);
-
-                } else {
-                    Thread.Sleep (500);
-
-                    if (IsActive) {
-                        Logger.LogInfo ("Fetcher", "Failed");
-                        Failed ();
+                try {
+                    cancellationToken.ThrowIfCancellationRequested();
                     
-                    } else {
-                        Logger.LogInfo ("Fetcher", "Failed: cancelled by user");
-                    }
+                    if (Fetch ()) {
+                        if (!cancellationToken.IsCancellationRequested) {
+                            Thread.Sleep (500);
+                            Logger.LogInfo ("Fetcher", "Finished");
 
+                            IsActive = false;
+                            Finished (FetchedRepoStorageType, Warnings);
+                        }
+                    } else {
+                        if (!cancellationToken.IsCancellationRequested) {
+                            Thread.Sleep (500);
+
+                            if (IsActive) {
+                                Logger.LogInfo ("Fetcher", "Failed");
+                                Failed ();
+                            
+                            } else {
+                                Logger.LogInfo ("Fetcher", "Failed: cancelled by user");
+                            }
+                        }
+
+                        IsActive = false;
+                    }
+                } catch (OperationCanceledException) {
+                    Logger.LogInfo ("Fetcher", "Operation was cancelled");
                     IsActive = false;
                 }
             });
@@ -249,8 +263,25 @@ namespace Sparkles {
 
         public void Dispose ()
         {
-            if (thread != null)
-                thread.Abort ();
+            // Signal cancellation to the thread
+            if (cancellationTokenSource != null && !cancellationTokenSource.IsCancellationRequested)
+            {
+                cancellationTokenSource.Cancel();
+            }
+
+            // Wait for thread to finish gracefully
+            if (thread != null && thread.IsAlive)
+            {
+                if (!thread.Join(5000)) // Wait up to 5 seconds
+                {
+                    Logger.LogInfo("Fetcher", "Thread did not terminate gracefully within timeout");
+                    // Thread didn't finish, but we avoid Thread.Abort()
+                }
+            }
+
+            // Dispose resources
+            cancellationTokenSource?.Dispose();
+            IsActive = false;
         }
 
 
