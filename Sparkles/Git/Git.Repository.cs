@@ -37,24 +37,40 @@ namespace Sparkles.Git {
                 if (!string.IsNullOrEmpty (this.cached_branch))
                     return this.cached_branch;
 
-                var git = new GitCommand (LocalPath, "config core.ignorecase true");
-                git.StartAndWaitForExit ();
+                // Store the original ignorecase setting
+                var git_get_ignorecase = new GitCommand (LocalPath, "config core.ignorecase");
+                string original_ignorecase = git_get_ignorecase.StartAndReadStandardOutput();
+                bool had_setting = git_get_ignorecase.ExitCode == 0;
 
-                // TODO: ugly
-                while (this.in_merge && HasLocalChanges) {
-                    try {
-                        ResolveConflict ();
+                try {
+                    // Temporarily enable case insensitivity for merge conflict resolution
+                    var git = new GitCommand (LocalPath, "config core.ignorecase true");
+                    git.StartAndWaitForExit ();
 
-                    } catch (IOException e) {
-                        Logger.LogInfo ("Git", Name + " | Failed to resolve conflict, trying again...", e);
+                    // Resolve conflicts if in merge state
+                    while (this.in_merge && HasLocalChanges) {
+                        try {
+                            ResolveConflict ();
+                        } catch (IOException e) {
+                            Logger.LogInfo ("Git", Name + " | Failed to resolve conflict, trying again...", e);
+                            // Add a small delay to prevent tight loop
+                            Thread.Sleep(100);
+                        }
+                    }
+                } finally {
+                    // Restore the original ignorecase setting
+                    if (had_setting) {
+                        var restore_git = new GitCommand (LocalPath, "config core.ignorecase " + original_ignorecase);
+                        restore_git.StartAndWaitForExit ();
+                    } else {
+                        // Remove the setting if it wasn't originally set
+                        var remove_git = new GitCommand (LocalPath, "config --unset core.ignorecase");
+                        remove_git.StartAndWaitForExit ();
                     }
                 }
 
-                git = new GitCommand (LocalPath, "config core.ignorecase false");
-                git.StartAndWaitForExit ();
-
-                git = new GitCommand (LocalPath, "rev-parse --abbrev-ref HEAD");
-                this.cached_branch = git.StartAndReadStandardOutput ();
+                var git_branch = new GitCommand (LocalPath, "rev-parse --abbrev-ref HEAD");
+                this.cached_branch = git_branch.StartAndReadStandardOutput ();
 
                 return this.cached_branch;
             }
