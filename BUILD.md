@@ -1,6 +1,6 @@
-# SparkleShare Build Guide
+# SparkleShare Build Guide - Windows Edition
 
-This document explains how to build SparkleShare and create releases using the automated GitHub Actions workflows.
+This document explains how to build SparkleShare for Windows and create releases using the automated GitHub Actions workflow. This version focuses exclusively on Windows platform support with Linux/Mac components removed for better stability.
 
 ## 🚀 Quick Start
 
@@ -47,12 +47,13 @@ msbuild SparkleShare.sln /p:Configuration=Release /p:Platform="Any CPU"
 
 ### What Gets Built
 
-The automated build creates:
+The Windows-only automated build creates:
 - ✅ **Windows executable** (SparkleShare.Windows.exe)
-- ✅ **All dependencies** (DLLs, images, presets)
-- ✅ **Launcher script** (Launch-SparkleShare.bat)
-- ✅ **Installation guide** (README.md)
-- ✅ **ZIP package** ready for distribution
+- ✅ **Core libraries** (Sparkles.dll, Sparkles.Git.dll)
+- ✅ **Professional launcher** (SparkleShare.bat with ASCII art)
+- ✅ **Comprehensive documentation** (README.md with setup guide)
+- ✅ **Version information** (version.txt with build details)
+- ✅ **Production-ready ZIP** package for distribution
 
 ## 🔧 Build Workflow
 
