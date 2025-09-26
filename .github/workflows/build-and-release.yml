@@ -2,10 +2,10 @@ name: Build and Release SparkleShare
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main, master, develop ]
     tags: [ 'v*' ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, master ]
 
 env:
   DOTNET_FRAMEWORK_VERSION: '4.8'
@@ -27,6 +27,15 @@ jobs:
       uses: nuget/setup-nuget@v2
       with:
         nuget-version: 'latest'
+        
+    - name: Create placeholder missing images
+      run: |
+        New-Item -Path "SparkleShare\Linux\Images\icons\hicolor" -ItemType Directory -Force
+        Copy-Item "SparkleShare\Windows\Images\folder.png" "SparkleShare\Linux\Images\icons\hicolor\document-added-12.png" -Force -ErrorAction SilentlyContinue
+        Copy-Item "SparkleShare\Windows\Images\folder.png" "SparkleShare\Linux\Images\icons\hicolor\document-deleted-12.png" -Force -ErrorAction SilentlyContinue
+        Copy-Item "SparkleShare\Windows\Images\folder.png" "SparkleShare\Linux\Images\icons\hicolor\document-edited-12.png" -Force -ErrorAction SilentlyContinue
+        Copy-Item "SparkleShare\Windows\Images\folder.png" "SparkleShare\Linux\Images\icons\hicolor\document-moved-12.png" -Force -ErrorAction SilentlyContinue
+        Copy-Item "SparkleShare\Windows\Images\process-syncing.png" "SparkleShare\Linux\Images\icons\hicolor\process-working-22.png" -Force -ErrorAction SilentlyContinue
         
     - name: Restore NuGet packages
       run: nuget restore SparkleShare.sln
