@@ -68,10 +68,10 @@ namespace Sparkles {
         string FetchHostKey ()
         {
             Logger.LogInfo ("Auth", string.Format ("Fetching host key for {0}", RemoteUrl.Host));
-            var ssh_keyscan = new Command (SSHKeyScan, string.Format ("-t rsa -p 22 {0}", RemoteUrl.Host));
-
-            if (RemoteUrl.Port > 0)
-                ssh_keyscan.StartInfo.Arguments = string.Format ("-t rsa -p {0} {1}", RemoteUrl.Port, RemoteUrl.Host);
+            
+            // Use the actual port from the URL, defaulting to 22 for SSH if not specified
+            int port = RemoteUrl.Port > 0 ? RemoteUrl.Port : 22;
+            var ssh_keyscan = new Command (SSHKeyScan, string.Format ("-t rsa -p {0} {1}", port, RemoteUrl.Host));
 
             string host_key = ssh_keyscan.StartAndReadStandardOutput ();
 
