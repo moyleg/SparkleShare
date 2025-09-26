@@ -85,17 +85,18 @@ namespace Sparkles {
         string DeriveFingerprint (string public_key)
         {
             try {
-                SHA256 sha256 = new SHA256CryptoServiceProvider ();
-                string key = public_key.Split (" ".ToCharArray ()) [2];
+                using (SHA256 sha256 = new SHA256CryptoServiceProvider ())
+                {
+                    string key = public_key.Split (" ".ToCharArray ()) [2];
 
-                byte [] base64_bytes = Convert.FromBase64String (key);
-                byte [] sha256_bytes = sha256.ComputeHash (base64_bytes);
+                    byte [] base64_bytes = Convert.FromBase64String (key);
+                    byte [] sha256_bytes = sha256.ComputeHash (base64_bytes);
 
-                string fingerprint = BitConverter.ToString (sha256_bytes);
-                fingerprint = fingerprint.ToLower ().Replace ("-", ":");
+                    string fingerprint = BitConverter.ToString (sha256_bytes);
+                    fingerprint = fingerprint.ToLower ().Replace ("-", ":");
 
-                return fingerprint;
-
+                    return fingerprint;
+                }
             } catch (Exception e) {
                 Logger.LogInfo ("Fetcher", "Failed to create fingerprint: ", e);
                 return null;
