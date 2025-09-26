@@ -89,7 +89,8 @@ namespace SparkleShare {
             string app_path = Path.GetDirectoryName (Forms.Application.ExecutablePath);
             string icon_file_path = Path.Combine (app_path, "Images", "sparkleshare-folder.ico");
 
-            if (!File.Exists (icon_file_path))
+            // Only set the icon if the icon file actually exists
+            if (File.Exists (icon_file_path))
             {
                 string ini_file_path = Path.Combine (FoldersPath, "desktop.ini");
                 string n = Environment.NewLine;
@@ -101,7 +102,12 @@ namespace SparkleShare {
 
                 try
                 {
-                    File.Create (ini_file_path).Close ();
+                    // Use proper disposal pattern for File.Create
+                    using (var fileStream = File.Create (ini_file_path))
+                    {
+                        // File is created and will be disposed properly
+                    }
+                    
                     File.WriteAllText (ini_file_path, ini_file);
 
                     File.SetAttributes (ini_file_path,

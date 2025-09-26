@@ -113,7 +113,11 @@ namespace Sparkles {
                 if (!Directory.Exists (ssh_config_path))
                     Directory.CreateDirectory (ssh_config_path);
 
-                File.Create (known_hosts_file_path).Close ();
+                // Use proper disposal pattern for File.Create
+                using (var fileStream = File.Create (known_hosts_file_path))
+                {
+                    // File is created and will be disposed properly
+                }
             }
 
             string host                 = RemoteUrl.Host;
