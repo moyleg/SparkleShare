@@ -211,24 +211,19 @@
       <Link>Images\user-icon-default.png</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </EmbeddedResource>
-    <EmbeddedResource Include="..\Linux\Images\icons\hicolor\document-added-12.png">
-      <Link>Images\document-added-12.png</Link>
+    <EmbeddedResource Include="Images\icons\document-added-12.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </EmbeddedResource>
-    <EmbeddedResource Include="..\Linux\Images\icons\hicolor\document-deleted-12.png">
-      <Link>Images\document-deleted-12.png</Link>
+    <EmbeddedResource Include="Images\icons\document-deleted-12.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </EmbeddedResource>
-    <EmbeddedResource Include="..\Linux\Images\icons\hicolor\document-edited-12.png">
-      <Link>Images\document-edited-12.png</Link>
+    <EmbeddedResource Include="Images\icons\document-edited-12.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </EmbeddedResource>
-    <EmbeddedResource Include="..\Linux\Images\icons\hicolor\document-moved-12.png">
-      <Link>Images\document-moved-12.png</Link>
+    <EmbeddedResource Include="Images\icons\document-moved-12.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </EmbeddedResource>
-    <EmbeddedResource Include="..\Linux\Images\icons\hicolor\process-working-22.png">
-      <Link>Images\process-working-22.png</Link>
+    <EmbeddedResource Include="Images\icons\process-working-22.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </EmbeddedResource>
     <EmbeddedResource Include="Images\process-syncing-down.png">
