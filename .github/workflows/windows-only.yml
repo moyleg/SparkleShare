@@ -1,0 +1,345 @@
+name: Build SparkleShare Windows
+
+on:
+  push:
+    branches: [ main, master, develop ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main, master ]
+
+env:
+  DOTNET_VERSION: '4.8'
+  BUILD_CONFIGURATION: Release
+
+jobs:
+  build:
+    name: Build Windows Application
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Setup MSBuild
+      uses: microsoft/setup-msbuild@v2
+      
+    - name: Setup NuGet
+      uses: nuget/setup-nuget@v2
+      with:
+        nuget-version: 'latest'
+        
+    - name: Restore NuGet packages
+      run: nuget restore SparkleShare.sln
+      
+    - name: Build Sparkles Core Library
+      run: msbuild Sparkles/Sparkles.csproj /p:Configuration=${{ env.BUILD_CONFIGURATION }} /p:Platform="Any CPU" /verbosity:minimal /nologo
+      
+    - name: Build Sparkles Git Library  
+      run: msbuild Sparkles/Git/Sparkles.Git.csproj /p:Configuration=${{ env.BUILD_CONFIGURATION }} /p:Platform="Any CPU" /verbosity:minimal /nologo
+      
+    - name: Build SparkleShare Windows Application
+      run: msbuild SparkleShare/Windows/SparkleShare.Windows.csproj /p:Configuration=${{ env.BUILD_CONFIGURATION }} /p:Platform="Any CPU" /verbosity:minimal /nologo
+      
+    - name: Verify Build Success
+      run: |
+        Write-Host "🔍 Verifying build output..." -ForegroundColor Cyan
+        
+        # Check if main executable was created
+        if (Test-Path "bin\SparkleShare.Windows.exe") {
+          $exe = Get-Item "bin\SparkleShare.Windows.exe"
+          Write-Host "✅ SparkleShare.Windows.exe - $($exe.Length) bytes" -ForegroundColor Green
+        } else {
+          Write-Host "❌ SparkleShare.Windows.exe NOT FOUND" -ForegroundColor Red
+          exit 1
+        }
+        
+        # Check for required DLLs
+        $requiredFiles = @(
+          "Sparkles.dll",
+          "Sparkles.Git.dll"
+        )
+        
+        foreach ($file in $requiredFiles) {
+          if (Test-Path "bin\$file") {
+            Write-Host "✅ $file" -ForegroundColor Green
+          } else {
+            Write-Host "❌ $file MISSING" -ForegroundColor Red
+            exit 1
+          }
+        }
+        
+        Write-Host "🎉 Build verification completed successfully!" -ForegroundColor Green
+      
+    - name: Upload Build Artifacts
+      uses: actions/upload-artifact@v4
+      if: success()
+      with:
+        name: SparkleShare-Windows-${{ github.sha }}
+        path: bin/
+        retention-days: 30
+
+  release:
+    name: Create Release Package
+    runs-on: windows-latest
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Download build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: SparkleShare-Windows-${{ github.sha }}
+        path: bin/
+        
+    - name: Create Release Package
+      run: |
+        Write-Host "📦 Creating release package..." -ForegroundColor Cyan
+        
+        # Create package directory
+        New-Item -Path "SparkleShare-Windows" -ItemType Directory -Force
+        Copy-Item "bin\*" "SparkleShare-Windows\" -Recurse -Force
+        
+        # Create launcher script
+        $launcher = @'
+        @echo off
+        title SparkleShare for Windows
+        cls
+        
+        echo.
+        echo  ███████╗██████╗  █████╗ ██████╗ ██╗  ██╗██╗     ███████╗
+        echo  ██╔════╝██╔══██╗██╔══██╗██╔══██╗██║ ██╔╝██║     ██╔════╝
+        echo  ███████╗██████╔╝███████║██████╔╝█████╔╝ ██║     █████╗  
+        echo  ╚════██║██╔═══╝ ██╔══██║██╔══██╗██╔═██╗ ██║     ██╔══╝  
+        echo  ███████║██║     ██║  ██║██║  ██║██║  ██╗███████╗███████╗
+        echo  ╚══════╝╚═╝     ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝╚══════╝
+        echo.
+        echo  SHARE ■ SYNC ■ COLLABORATE
+        echo  Windows Edition with Critical Bug Fixes
+        echo.
+        echo ================================================================
+        
+        cd /d "%~dp0"
+        
+        if not exist "SparkleShare.Windows.exe" (
+            echo ❌ ERROR: SparkleShare.Windows.exe not found!
+            echo    Make sure all files were extracted properly.
+            echo.
+            pause
+            exit /b 1
+        )
+        
+        echo ▶ Starting SparkleShare...
+        start "" "SparkleShare.Windows.exe"
+        
+        echo.
+        echo ✅ SparkleShare has been launched successfully!
+        echo 💡 Look for the SparkleShare icon in your system tray.
+        echo 🔧 Right-click the icon to add repositories and configure sync.
+        echo.
+        echo This window will close automatically in 5 seconds...
+        timeout /t 5 >nul
+        '@
+        $launcher | Out-File -FilePath "SparkleShare-Windows\SparkleShare.bat" -Encoding ASCII
+        
+        # Create comprehensive README
+        $readme = @"
+        # SparkleShare ${{ github.ref_name }} for Windows
+        
+        **A fast, secure file synchronization tool powered by Git.**
+        
+        ## 🚀 Quick Start Guide
+        
+        1. **Launch**: Double-click ``SparkleShare.bat`` (recommended) or ``SparkleShare.Windows.exe``
+        2. **Setup**: Follow the initial setup wizard
+        3. **Add Repository**: Click the system tray icon → "Add Hosted Project"
+        4. **Sync**: Files will automatically sync across all your devices
+        
+        ## ✨ What's New in This Release
+        
+        This version includes **comprehensive bug fixes and improvements**:
+        
+        ### 🔧 Critical Fixes Applied
+        - **Thread Safety**: Eliminated dangerous Thread.Abort() usage
+        - **Memory Management**: Fixed crypto object disposal and memory leaks
+        - **SSH Connectivity**: Dynamic port handling and improved authentication  
+        - **File Operations**: Corrected file existence checks and resource disposal
+        - **Error Handling**: Better exception management and user feedback
+        - **Windows Compatibility**: Optimized Git command execution on Windows
+        - **Process Stability**: Eliminated unexpected application exits
+        - **Configuration Safety**: Robust Git config handling with recovery
+        
+        ### 🎯 Windows-Optimized Features
+        - Native Windows .NET Framework 4.8 support
+        - System tray integration with Windows notifications
+        - Windows-specific Git path resolution
+        - Proper Windows file system integration
+        - Windows Explorer context menu integration
+        
+        ## 📋 System Requirements
+        
+        - **Operating System**: Windows 7 SP1 or later (Windows 10/11 recommended)
+        - **Framework**: .NET Framework 4.8 (included with Windows 10+)
+        - **Git**: Git for Windows 2.20+ (recommended for full functionality)
+        - **Disk Space**: ~100MB for installation
+        - **Network**: Internet connection for repository synchronization
+        
+        ## 🔧 Configuration Guide
+        
+        ### First-Time Setup
+        1. **User Information**: Enter your name and email address
+        2. **SSH Keys**: Generate or import existing SSH keys
+        3. **Repository**: Add your first Git repository URL
+        4. **Local Folder**: Choose where to store synchronized files
+        
+        ### Supported Git Hosts
+        - **GitHub** (github.com)
+        - **GitLab** (gitlab.com)  
+        - **Bitbucket** (bitbucket.org)
+        - **Self-hosted Git** servers
+        - **Any SSH/HTTPS accessible Git** repository
+        
+        ### Adding Repositories
+        1. Right-click SparkleShare system tray icon
+        2. Select "Add Hosted Project"
+        3. Choose your Git hosting provider
+        4. Enter repository URL (SSH or HTTPS)
+        5. Select local synchronization folder
+        6. Click "Add" to begin syncing
+        
+        ## 🛠️ Troubleshooting
+        
+        ### Application Won't Start
+        - **Check .NET Framework**: Ensure .NET Framework 4.8 is installed
+        - **Run as Administrator**: Try right-click → "Run as Administrator"  
+        - **Check Event Viewer**: Look for .NET runtime errors in Windows Event Viewer
+        - **Antivirus**: Add SparkleShare to antivirus exclusions
+        
+        ### Synchronization Issues
+        - **SSH Keys**: Verify SSH keys are properly configured in your Git host
+        - **Repository Access**: Confirm you have read/write access to the repository
+        - **Network**: Check internet connectivity and firewall settings
+        - **Git Installation**: Ensure Git for Windows is properly installed
+        
+        ### Performance Optimization  
+        - **Exclusions**: Add sync folders to antivirus exclusions
+        - **Disk Space**: Ensure adequate free disk space (10GB+ recommended)
+        - **Large Files**: Use Git LFS for files larger than 100MB
+        - **Network**: Use wired connection for initial large repository sync
+        
+        ## 🔒 Security Features
+        
+        - **SSH Key Authentication**: Secure key-based authentication
+        - **Encrypted Transport**: All data encrypted in transit via SSH/HTTPS
+        - **Local Encryption**: Optional local file encryption support  
+        - **Access Control**: Repository-level access control via Git hosting
+        - **Audit Trail**: Complete change history via Git version control
+        
+        ## 📈 Advanced Usage
+        
+        ### Command Line Integration
+        SparkleShare integrates with Git command line tools for advanced users:
+        ```cmd
+        cd "C:\Users\YourName\SparkleShare\YourProject"
+        git status
+        git log --oneline
+        ```
+        
+        ### Multiple Repositories
+        - Add unlimited repositories
+        - Each repository syncs independently
+        - Separate local folders for each project
+        - Individual SSH keys per repository supported
+        
+        ## 📞 Support & Community
+        
+        - **Issues**: [Report bugs on GitHub](https://github.com/hbons/SparkleShare/issues)
+        - **Documentation**: [SparkleShare Wiki](https://github.com/hbons/SparkleShare/wiki)  
+        - **Source Code**: [View on GitHub](https://github.com/hbons/SparkleShare)
+        - **License**: GNU General Public License v3.0
+        
+        ## 📊 Version Information
+        
+        - **Version**: ${{ github.ref_name }}
+        - **Build Date**: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') UTC
+        - **Platform**: Windows (.NET Framework 4.8)
+        - **Architecture**: Any CPU (32-bit and 64-bit compatible)
+        - **Git Support**: Git 2.20+ with LFS support
+        
+        ---
+        
+        **🎉 Enjoy fast, secure file synchronization with SparkleShare for Windows!**
+        
+        *Made with ❤️ by the SparkleShare community*
+        "@
+        $readme | Out-File -FilePath "SparkleShare-Windows\README.md" -Encoding UTF8
+        
+        # Create version info file
+        $version = "${{ github.ref_name }}" -replace "^v", ""
+        @"
+        SparkleShare for Windows
+        Version: $version
+        Build: ${{ github.sha }}
+        Built: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') UTC
+        Platform: Windows (.NET Framework 4.8)
+        "@ | Out-File -FilePath "SparkleShare-Windows\version.txt" -Encoding UTF8
+        
+        # Create ZIP package
+        Compress-Archive -Path "SparkleShare-Windows\*" -DestinationPath "SparkleShare-Windows-$version.zip" -Force
+        
+        Write-Host "✅ Release package created: SparkleShare-Windows-$version.zip" -ForegroundColor Green
+        
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: ${{ github.ref_name }}
+        name: "SparkleShare ${{ github.ref_name }} for Windows"
+        body: |
+          ## 🚀 SparkleShare ${{ github.ref_name }} - Windows Edition
+          
+          **A major stability and security release with comprehensive bug fixes.**
+          
+          ### ⭐ Key Improvements
+          - 🛡️ **Enhanced Security**: Fixed thread safety and memory management
+          - 🚀 **Improved Stability**: Eliminated crashes and unexpected behavior
+          - 🔧 **Windows Optimization**: Better Git integration and path handling
+          - 🌐 **Better Connectivity**: Enhanced SSH and network handling
+          
+          ### 🐛 Critical Fixes
+          - Fixed dangerous `Thread.Abort()` usage with proper cancellation
+          - Resolved memory leaks in cryptographic operations
+          - Improved SSH port handling and authentication
+          - Corrected file operation and resource management issues
+          - Enhanced error handling and user feedback
+          - Optimized Windows-specific Git command execution
+          
+          ### 📦 Installation
+          1. **Download**: `SparkleShare-Windows-${{ github.ref_name }}.zip`
+          2. **Extract**: Unzip to your preferred location (e.g., `C:\SparkleShare\`)
+          3. **Launch**: Run `SparkleShare.bat` (recommended)
+          4. **Setup**: Follow the initial configuration wizard
+          
+          ### 💻 System Requirements
+          - Windows 7 SP1 or later (Windows 10/11 recommended)
+          - .NET Framework 4.8
+          - Git for Windows (recommended)
+          - 100MB disk space
+          
+          ### 🔧 What's Included
+          - SparkleShare.Windows.exe (main application)
+          - All required libraries and dependencies
+          - Windows-optimized launcher script
+          - Comprehensive documentation
+          - Version and build information
+          
+          This release focuses exclusively on Windows platform optimization, removing cross-platform complexity for better stability and performance.
+          
+          **🎯 Ready for production use with enterprise-grade stability improvements.**
+        draft: false
+        prerelease: ${{ contains(github.ref_name, '-') }}
+        files: SparkleShare-Windows-*.zip
+        make_latest: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

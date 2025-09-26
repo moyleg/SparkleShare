@@ -54,22 +54,15 @@ The automated build creates:
 - ✅ **Installation guide** (README.md)
 - ✅ **ZIP package** ready for distribution
 
-## 🔧 Build Workflows
+## 🔧 Build Workflow
 
-### 1. build-windows.yml
-- **Triggers:** Push to any branch, Pull Requests
-- **Purpose:** Continuous integration builds
-- **Output:** Build artifacts for testing
-
-### 2. release.yml  
-- **Triggers:** Git tags (v*)
-- **Purpose:** Create official releases
-- **Output:** GitHub release with downloadable ZIP
-
-### 3. build-and-release.yml
-- **Triggers:** Tags, main/develop branches
-- **Purpose:** Multi-platform builds (Windows + Linux)
-- **Output:** Multiple platform packages
+### windows-only.yml
+- **Triggers:** Push to main/master/develop branches, Pull Requests, Git tags (v*)
+- **Purpose:** Windows-only builds and releases (Linux/Mac support removed)
+- **Jobs:**
+  - **Build:** Continuous integration builds for testing
+  - **Release:** Automatic GitHub releases when tags are pushed
+- **Output:** Professional Windows packages with launcher scripts and documentation
 
 ## 🐛 Bug Fixes Applied
 
@@ -106,10 +99,10 @@ After a successful build:
 - Verify Git is available in system PATH
 - Test with a simple Git repository first
 
-### Linux Build Issues  
-- Mono version compatibility
-- GTK dependencies
-- Package manager differences
+### Windows Compatibility Issues
+- .NET Framework 4.8 installation
+- Windows Defender exclusions
+- Git for Windows PATH configuration
 
 ## 📋 Release Checklist
 
