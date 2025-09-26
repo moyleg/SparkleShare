@@ -170,19 +170,72 @@ namespace SparkleShare {
 
         public override void OpenFile (string path)
         {
-            Process.Start (path);
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                Logger.LogInfo("Controller", "Cannot open file: path is null or empty");
+                return;
+            }
+
+            try {
+                if (File.Exists(path) || Directory.Exists(path))
+                {
+                    Process.Start (path);
+                }
+                else
+                {
+                    Logger.LogInfo("Controller", "Cannot open file: path does not exist - " + path);
+                }
+            } catch (Exception e) {
+                Logger.LogInfo("Controller", "Failed to open file '" + path + "': " + e.Message);
+            }
         }
 
 
         public override void OpenFolder (string path)
         {
-            Process.Start (path);
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                Logger.LogInfo("Controller", "Cannot open folder: path is null or empty");
+                return;
+            }
+
+            try {
+                if (Directory.Exists(path))
+                {
+                    Process.Start (path);
+                }
+                else
+                {
+                    Logger.LogInfo("Controller", "Cannot open folder: path does not exist - " + path);
+                }
+            } catch (Exception e) {
+                Logger.LogInfo("Controller", "Failed to open folder '" + path + "': " + e.Message);
+            }
         }
 
 
         public override void OpenWebsite (string url)
         {
-            Process.Start (new ProcessStartInfo (url));
+            if (string.IsNullOrWhiteSpace(url))
+            {
+                Logger.LogInfo("Controller", "Cannot open website: URL is null or empty");
+                return;
+            }
+
+            try {
+                // Basic URL validation
+                if (Uri.TryCreate(url, UriKind.Absolute, out Uri validatedUri) &&
+                    (validatedUri.Scheme == Uri.UriSchemeHttp || validatedUri.Scheme == Uri.UriSchemeHttps))
+                {
+                    Process.Start (new ProcessStartInfo (url));
+                }
+                else
+                {
+                    Logger.LogInfo("Controller", "Cannot open website: invalid URL - " + url);
+                }
+            } catch (Exception e) {
+                Logger.LogInfo("Controller", "Failed to open website '" + url + "': " + e.Message);
+            }
         }
 
 
